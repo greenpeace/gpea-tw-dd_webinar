@@ -1,8 +1,8 @@
 const jquery = require('jquery');
 $ = window.$ = window.jQuery = jquery;
 
-//var endpoint = 'https://cors-anywhere.small-service.gpeastasia.org/https://cloud.greentw.greenpeace.org/websign-dummy';
-var endpoint = 'https://cloud.greentw.greenpeace.org/websign';
+var endpoint = 'https://cors-anywhere.small-service.gpeastasia.org/https://cloud.greentw.greenpeace.org/websign-dummy';
+//var endpoint = 'https://cloud.greentw.greenpeace.org/websign';
 //var appScriptUrl = 'https://script.google.com/macros/s/AKfycbxv51TSdarVToqYywWgSjOpz0wy4ml1HYh4WkMgv5uNRHlVtzZikO0wJu5ZpVZ3bjPp/exec';//dummy
 var appScriptUrl = 'https://script.google.com/macros/s/AKfycbwl2OACweJFklrhOlWT_Do9n68b6DLWcpPBAYDEqGfab9nJqLUJmv7QRz9FoyGl5MFw/exec';
 var successful_list = [];
@@ -410,11 +410,20 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
     let topics = [];
     let topicSessions = [];
-
-    // populate the events to the select element    
     let newTopicIndex = 0
+
+    // populate the events to the select element        
     events.forEach((row, k) => {
+      if (row["Event Display Name"] == "undefined" || !row["Event Display Name"]) {
+        return;
+      }
+      // console.log("newTopicIndex:", newTopicIndex);
+      // console.log(topics);
+      // if (newTopicIndex > 1) {
+      //   return;
+      // }
       
+      // creating the session / topic
       // creating hidden input for EndDate
       let endDate = document.createElement('input');
       endDate.type = "hidden";
@@ -436,7 +445,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
       label.id = `label-session${k}`;
        
       // appending the created text to the created label tag
-      if (row["Max Signups"] == 0 || !row["CampaignId"]) {
+      if (row["Max Signups"] == 0 || !row["CampaignId"] || row["is-full"]) {
         label.appendChild(document.createTextNode(`${row["Session"]}（已額滿）`));        
       } else {
         label.appendChild(document.createTextNode(`${row["Session"]}`));
@@ -447,8 +456,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
       if (newTopicIndex % 2) {
         topicBgColor = '#ffffff';
       }
-      if (topics.includes(row["Event Display Name"])) {
-        let topicIndex = topics.indexOf(row["Event Display Name"]);
+
+      if (topics.includes(row["Event Display Name"])) { // if already an exist topic, get it's index of topics[]
+        let topicIndex = topics.indexOf(row["Event Display Name"]);        
 
         // add the non-first session
         // get the container, and appending the checkbox and label to it     
@@ -457,20 +467,21 @@ document.addEventListener("DOMContentLoaded", function(event) {
         fullNameInput.id = `fullName-session${k}`;
         fullNameInput.value = `${row["Session"]} ${row["Event Display Name"]}`;
 
-        let containerDiv = topicSessions[topicIndex];
-        //containerDiv.className = "form__session";
-        containerDiv.appendChild(checkbox);
-        containerDiv.appendChild(label);
-        containerDiv.appendChild(endDate);
-        containerDiv.appendChild(fullNameInput);
+        let sessionDiv = topicSessions[topicIndex];
+        //sessionDiv.className = "form__session";
+        sessionDiv.appendChild(checkbox);
+        sessionDiv.appendChild(label);
+        sessionDiv.appendChild(endDate);
+        sessionDiv.appendChild(fullNameInput);
+        sessionDiv.id = `container${topicIndex}`;     
         
-        sessionDOM.appendChild(containerDiv);
+        // finding the exist topic container, add session into it
+        let topicContainerDiv = document.getElementById(`topicContainer${topicIndex}`);         
+        topicContainerDiv.appendChild(sessionDiv);
+        
+        //sessionDOM.appendChild(sessionDiv);
 
-      } else {
-        // add Event Display Name to topics[]
-        topics.push(row["Event Display Name"]);
-        newTopicIndex++;        
-
+      } else { // if it is a new topic, insert into topics[]         
         // creating label for this Event Display Name
         // creating div as container
         let topicDiv = document.createElement('div');      
@@ -479,8 +490,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
         topicLabel.appendChild(document.createTextNode(`${row["Event Display Name"]}`));
         topicDiv.appendChild(topicLabel);                
         topicDiv.style.backgroundColor = topicBgColor;
+        topicDiv.id = `topic${newTopicIndex}`;
 
-        sessionDOM.appendChild(topicDiv);
+        //sessionDOM.appendChild(topicDiv);
 
         // add the first session        
         // creating div as container, and appending the checkbox and label to it        
@@ -489,18 +501,29 @@ document.addEventListener("DOMContentLoaded", function(event) {
         fullNameInput.id = `fullName-session${k}`;
         fullNameInput.value = `${row["Session"]} ${row["Event Display Name"]}`;
 
-        let containerDiv = document.createElement('div');      
-        containerDiv.className = "form__session";
-        containerDiv.appendChild(checkbox);
-        containerDiv.appendChild(label);
-        containerDiv.appendChild(endDate);
-        containerDiv.appendChild(fullNameInput);
-        containerDiv.style.backgroundColor = topicBgColor;                
+        let sessionDiv = document.createElement('div');      
+        sessionDiv.className = "form__session";
+        sessionDiv.appendChild(checkbox);
+        sessionDiv.appendChild(label);
+        sessionDiv.appendChild(endDate);
+        sessionDiv.appendChild(fullNameInput);
+        sessionDiv.id = `container${newTopicIndex}`;
+        sessionDiv.style.backgroundColor = topicBgColor;    
+        
+        // creating a topic container, add topic / session into it
+        let topicContainerDiv = document.createElement('div');         
+        topicContainerDiv.appendChild(topicDiv);
+        topicContainerDiv.appendChild(sessionDiv);
+        topicContainerDiv.id = `topicContainer${newTopicIndex}`;
 
-        // add containerDiv to topicSessions[]
-        topicSessions.push(containerDiv);
+        // add sessionDiv to topicSessions[]
+        topicSessions.push(sessionDiv);
 
-        sessionDOM.appendChild(containerDiv);
+        // add Event Display Name to topics[]
+        topics.push(row["Event Display Name"]);        
+        newTopicIndex++;       
+
+        sessionDOM.appendChild(topicContainerDiv);
       }      
 
       // disable the checkbox of full session
@@ -511,7 +534,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
       if (row["is-full"]) {        
         document.getElementById(`session${k}`).disabled = true;
         label.className = "session-is-full";
-        label.innerText += "（已額滿）";
+        //label.innerText += "（已額滿）";
       }
 
     })
@@ -542,6 +565,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
           document.getElementsByClassName("content-bottom")[0].innerHTML = currentline[1].trim();
         } else if (currentline[0].toLowerCase().indexOf("thank you message") >= 0) {
           document.getElementsByClassName("content")[0].innerHTML = currentline[1].trim();          
+        } else if (currentline[0].toLowerCase().indexOf("share preview") >= 0) {
+          $('meta[property=og\\:image]').attr('content', currentline[1].trim());
         }
 
       }
@@ -549,7 +574,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
   // step 1: fetch events from gsheet
   // See howto use gsheet as DB
-  //fetch("https://docs.google.com/spreadsheets/u/0/d/1XsDBcedsKMY4yCpB3BGbnbQ7bmxlFkSVJiPy96-w4IQ/export?format=csv&id=1XsDBcedsKMY4yCpB3BGbnbQ7bmxlFkSVJiPy96-w4IQ&gid=0")
+  //fetch("https://docs.google.com/spreadsheets/u/0/d/1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ/export?format=csv&id=1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ&gid=0")
   fetch("https://docs.google.com/spreadsheets/u/0/d/1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ/export?format=csv&id=1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ&gid=0")
     .then(response => response.text())
     .then(response => csvJSON(response))
@@ -567,10 +592,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
       return fetch("https://cloud.greentw.greenpeace.org/campaign-member-counts?campaignIds="+campaignIds.join(","))
     })
     .then(response => response.json())
-    .then(response => {
-      console.log('response', response)
-
-      //let rows = response.rows;
+    .then(response => {      
       let rows = response;
       
       rows.forEach(serverRow => {
